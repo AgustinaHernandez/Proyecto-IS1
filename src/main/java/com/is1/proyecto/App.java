@@ -12,6 +12,8 @@ import org.mindrot.jbcrypt.BCrypt; // Utilidad para hashear y verificar contrase
 import spark.ModelAndView; // Representa un modelo de datos y el nombre de la vista a renderizar.
 import spark.template.mustache.MustacheTemplateEngine; // Motor de plantillas Mustache para Spark.
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 // Importaciones estándar de Java
 import java.util.HashMap; // Para crear mapas de datos (modelos para las plantillas).
 import java.util.Map; // Interfaz Map, utilizada para Map.of() o HashMap.
@@ -218,58 +220,74 @@ public class App {
         });
 
         post("/teacher/new", (req, res) -> {
-           String firstname = req.queryParams("firstname");
-           String lastname = req.queryParams("lastname");
-           Integer dni = Integer.parseInt(req.queryParams("dni"));
-           String email = req.queryParams("email");
-           String degree = req.queryParams("degree");
+           String firstname = req.queryParams("firstname").trim();
+           String lastname = req.queryParams("lastname").trim();
+           String dniStr = req.queryParams("dni").trim();
+           String email = req.queryParams("email").trim();
+           String degree = req.queryParams("degree").trim();
           
           
            // Validaciones básicas: campos no pueden ser nulos o vacíos.
             if (firstname == null || firstname.isEmpty()
                 || lastname == null || lastname.isEmpty() || email == null || email.isEmpty()
-                || dni <= 0   || degree == null || degree.isEmpty() // TODO: agregar campo degree en formulario
+                || dniStr == null || dniStr.isEmpty()  || degree == null || degree.isEmpty()
             ) {
                res.status(400); // Código de estado HTTP 400 (Bad Request).
                // Redirige al formulario de creación con un mensaje de error.
-               System.out.println(firstname.isEmpty() + "," +lastname.isEmpty()+","+email.isEmpty());
-               res.redirect("/teacher/create?error=Todos los campos son requeridos.");
+               String errorMsg = URLEncoder.encode("Todos los campos son requeridos.", StandardCharsets.UTF_8);
+               res.redirect("/teacher/create?error=" + errorMsg);
                return ""; // Retorna una cadena vacía ya que la respuesta ya fue redirigida.
-           }
-           try {
+            }
+            Integer dni = 0;
+            try {
+                dni = Integer.parseInt(dniStr);
+                if (dni <= 0) throw new IllegalArgumentException("DNI inválido");
+            } catch (Exception e) {
+                res.status(400);
+                String errorMsg = URLEncoder.encode("El DNI debe ser un número válido.", StandardCharsets.UTF_8);
+                res.redirect("/teacher/create?error=" + errorMsg);
+                return "";
+            }
+
+            try {
                //Chequear si existe una persona con el mismo DNI o gmail. Si no, crearla.
                //Chequear si esa persona ya está registrada como profesor.
                //Si es así, denegar la solicitud. Sino, registrarla como profesor.
 
 
                // Intenta crear y guardar la nueva cuenta en la base de datos.
-              
-               //Person per = new Person();
+            
+               Base.openTransaction();  // Iniciamos la transaccion
+
+               Person p = new Person(); // Crea una nueva instancia del modelo Person.
+               p.set("first_name", firstname);
+               p.set("last_name", lastname);
+               p.set("dni", dni);
+               p.saveIt();
+            
                Teacher ac = new Teacher(); // Crea una nueva instancia del modelo User.
 
-
-               ac.set("first_name", firstname); // Asigna el nombre de usuario.
-               ac.set("last_name", lastname);
-               ac.set("dni", dni);
+               ac.set("person_id", p.getDNI());
                ac.set("degree", degree);
                ac.set("email", email);
-              
-               ac.saveIt(); // Guarda el nuevo usuario en la tabla 'users'.
-
+               
+               Base.commitTransaction();               
 
                res.status(201); // Código de estado HTTP 201 (Created) para una creación exitosa.
                // Redirige al formulario de creación con un mensaje de éxito.
-               res.redirect("/teacher/create?message=Profesor " + firstname + " registrado exitosamente!");
+               String successMsg = URLEncoder.encode("Profesor "+firstname+" "+lastname+" registrado correctamente.",StandardCharsets.UTF_8);
+               res.redirect("/teacher/create?message= " + successMsg);
                return ""; // Retorna una cadena vacía.
 
 
            } catch (Exception e) {
                // Si ocurre cualquier error durante la operación de DB (ej. nombre de usuario duplicado),
                // se captura aquí y se redirige con un mensaje de error.
-               System.err.println("Error al registrar el profesor: " + e.getMessage());
+               Base.rollbackTransaction(); // Si falla algo deshace
                e.printStackTrace(); // Imprime el stack trace para depuración.
                res.status(500); // Código de estado HTTP 500 (Internal Server Error).
-               res.redirect("/teacher/create?error=Error interno al crear el profesor. Intente de nuevo.");
+               String errorMsg = URLEncoder.encode("ERROR: DNI ya existente o error interno.", StandardCharsets.UTF_8);
+               res.redirect("/teacher/create?error="+errorMsg);
                return ""; // Retorna una cadena vacía. // Retorna una cadena vacía.
            }
        });
