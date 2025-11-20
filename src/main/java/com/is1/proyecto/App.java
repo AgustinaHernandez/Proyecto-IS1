@@ -178,6 +178,43 @@ public class App {
         }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
 
 
+        get("/profile", (req, res) -> {
+            Map<String, Object> model = new HashMap<>();
+
+            Object rawUserId = req.session().attribute("userId");
+            String currentUsername = req.session().attribute("currentUserUsername");
+            Long userId = null;
+
+            if (rawUserId != null) {
+                try {
+                    userId = Long.valueOf(rawUserId.toString()); 
+                } catch (NumberFormatException e) {
+                    System.err.println("ERROR: El userId en sesión no es un número válido. Forzando logout. " + e.getMessage());
+                    res.redirect("/logout");
+                    return null;
+                }
+            }
+            
+            if (userId == null) {
+                res.redirect("/?error=Debes iniciar sesión para acceder a tu perfil.");
+                return null;
+            }
+
+            User currentUser = User.findById(userId);
+
+            if (currentUser == null) {
+                res.redirect("/logout");
+                return null;
+            }
+
+            model.put("userId", currentUser.getId());
+            model.put("username", currentUsername); 
+            
+            return new ModelAndView(model, "perfil_usuario.mustache");
+        }, new MustacheTemplateEngine());
+
+
+
         // --- Rutas POST para manejar envíos de formularios y APIs ---
 
         // POST: Maneja el envío del formulario de creación de nueva cuenta.
@@ -267,7 +304,7 @@ public class App {
             
                Teacher ac = new Teacher(); // Crea una nueva instancia del modelo User.
 
-               ac.set("person_id", p.getDNI());
+               ac.set("person_id", p.getID());
                ac.set("degree", degree);
                ac.set("email", email);
                
