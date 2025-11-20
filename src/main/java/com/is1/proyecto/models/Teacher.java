@@ -1,10 +1,12 @@
 package com.is1.proyecto.models;
 
-//import org.javalite.activejdbc.Model;
+import org.javalite.activejdbc.annotations.BelongsTo;
+import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
 
 @Table("teachers") // Esta anotación asocia explícitamente el modelo 'Teacher' con la tabla 'teacher' en la DB.
-public class Teacher extends Person {
+@BelongsTo(parent = Person.class, foreignKeyName = "id")
+public class Teacher extends Model {
     
     private Person persona;
 
@@ -15,32 +17,32 @@ public class Teacher extends Person {
         return persona;
     }
 
-    @Override
+    
     public String getFirstName() {
         return getPerson().getString("first_name"); // Obtiene el valor de la columna 'name'
     }
 
-    @Override
+    
     public void setFirstName(String name) {
         getPerson().set("first_name", name);
     }
 
-    @Override
+    
     public String getLastName() {
         return getPerson().getString("last_name");
     }
 
-    @Override
+    
     public void setLastName(String lastname) {
         getPerson().set("last_name", lastname);
     }
 
-    @Override
+    
     public Integer getDNI(){
         return getPerson().getInteger("dni");
     }
 
-    @Override
+    
     public void setDNI(int dni) {
         getPerson().set("dni", dni);
     }
