@@ -39,7 +39,7 @@ CREATE TABLE teachers (
         )
     ),
 
-    CONSTRAINT fk_id_teacher FOREIGN KEY person_id REFERENCES persons (id)
+    CONSTRAINT fk_id_teacher FOREIGN KEY (person_id) REFERENCES persons (id)
 );
 
 DROP TABLE IF EXISTS students;
@@ -48,5 +48,5 @@ CREATE TABLE students (
     id INTEGER NOT NULL PRIMARY KEY,
     person_id INTEGER NOT NULL,
 
-    CONSTRAINT fk_id_student FOREIGN KEY person_id REFERENCES persons (id)
+    CONSTRAINT fk_id_student FOREIGN KEY (person_id) REFERENCES persons (id)
 );
