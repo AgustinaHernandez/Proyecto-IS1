@@ -222,7 +222,7 @@ public class App {
            String lastname = req.queryParams("lastname");
            Integer dni = Integer.parseInt(req.queryParams("dni"));
            String email = req.queryParams("email");
-           String degree = req.queryParams("title");
+           String degree = req.queryParams("degree");
           
           
            // Validaciones básicas: campos no pueden ser nulos o vacíos.

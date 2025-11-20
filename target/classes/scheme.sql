@@ -27,6 +27,18 @@ CREATE TABLE teachers (
     degree TEXT NOT NULL,
     email TEXT NOT NULL,
 
+    CONSTRAINT valid_degree CHECK (
+        degree IN (
+            'BACHILLERATO',
+            'TECNICATURA',
+            'PROFESORADO',
+            'LICENCIATURA',
+            'MAESTRIA',
+            'DOCTORADO',
+            'OTRO'
+        )
+    ),
+
     CONSTRAINT fk_id_teacher FOREIGN KEY person_id REFERENCES persons (id)
 );
 
