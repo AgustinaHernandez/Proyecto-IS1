@@ -139,7 +139,10 @@ public class App {
             // 3. Renderiza la plantilla del dashboard con el nombre de usuario.
             return new ModelAndView(model, "dashboard.mustache");
         }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
-
+        get("/settings", (req, res) -> {
+            res.redirect("https://d2fnysaq0ytmgw.cloudfront.net/public/content/media/image/page-under-construction.jpg?VersionId=MK1bzfxBR4nMMRShIV8_4rIsbsdxRs68");
+            return null; // Importante retornar null después de una redirección.
+        });
         // GET: Ruta para cerrar la sesión del usuario.
         get("/logout", (req, res) -> {
             // Invalida completamente la sesión del usuario.
@@ -264,17 +267,37 @@ public class App {
            String degree = req.queryParams("degree").trim();
           
           
-           // Validaciones básicas: campos no pueden ser nulos o vacíos.
+            // Validaciones básicas: campos no pueden ser nulos o vacíos.
             if (firstname == null || firstname.isEmpty()
                 || lastname == null || lastname.isEmpty() || email == null || email.isEmpty()
                 || dniStr == null || dniStr.isEmpty()  || degree == null || degree.isEmpty()
             ) {
-               res.status(400); // Código de estado HTTP 400 (Bad Request).
-               // Redirige al formulario de creación con un mensaje de error.
                String errorMsg = URLEncoder.encode("Todos los campos son requeridos.", StandardCharsets.UTF_8);
                res.redirect("/teacher/create?error=" + errorMsg);
-               return ""; // Retorna una cadena vacía ya que la respuesta ya fue redirigida.
+               return "";
             }
+            //Validación de nombre
+            String result = firstname.replaceAll("\\d", ""); //Quitar todos los números del firstname
+            if(result.length() != firstname.length()){ //Chequear si cambió la longitud
+                String errorMsg = URLEncoder.encode("El nombre no puede contener números.", StandardCharsets.UTF_8);
+                res.redirect("/teacher/create?error=" + errorMsg);
+                return "";
+            }
+            //Validación de apellido
+            result = lastname.replaceAll("\\d", ""); //Quitar todos los números del lastname
+            if(result.length() != lastname.length()){ //Chequear si cambió la longitud
+                String errorMsg = URLEncoder.encode("El apellido no puede contener números.", StandardCharsets.UTF_8);
+                res.redirect("/teacher/create?error=" + errorMsg);
+                return "";
+            }
+            //Validación de mail
+            String emailRegex = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
+            if(!email.matches(emailRegex)) {
+                String errorMsg = URLEncoder.encode("Ingrese un correo electrónico válido (ej: usuario@dominio.com).", StandardCharsets.UTF_8);
+                res.redirect("/teacher/create?error=" + errorMsg);
+                return "";
+            }
+            //Validación de DNI
             Integer dni = 0;
             try {
                 dni = Integer.parseInt(dniStr);
@@ -286,6 +309,7 @@ public class App {
                 return "";
             }
 
+            //Principal
             try {
                //Chequear si existe una persona con el mismo DNI o gmail. Si no, crearla.
                //Chequear si esa persona ya está registrada como profesor.
@@ -302,12 +326,13 @@ public class App {
                p.set("dni", dni);
                p.saveIt();
             
-               Teacher ac = new Teacher(); // Crea una nueva instancia del modelo User.
+               Teacher ac = new Teacher(); // Crea una nueva instancia del modelo Teacher.
 
                ac.set("person_id", p.getID());
                ac.set("degree", degree);
                ac.set("email", email);
-               
+               ac.saveIt();
+
                Base.commitTransaction();               
 
                res.status(201); // Código de estado HTTP 201 (Created) para una creación exitosa.

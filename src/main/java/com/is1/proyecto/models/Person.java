@@ -26,6 +26,10 @@ public class Person extends Model{
         return getInteger("dni");
     }
 
+    public Integer getID(){
+        return getInteger("id");
+    }
+
     public void setDNI(int dni) {
         set("dni", dni);
     }
