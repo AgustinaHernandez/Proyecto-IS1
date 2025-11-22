@@ -7,7 +7,7 @@ Centralizar la información académica de estudiantes, docentes y materias, faci
 
 ## Estructura del repositorio
 - `db/` → Bases de datos de desarrollo y producción.
-- `docs/` → Contiene la documentación en PDF.
+- `documentacion/` → Contiene la documentación en PDF.
 - `META-INF/` → Metadatos del proyecto.
 - `src/main/java/config` → Configuración única de conexión a la base de datos.
 - `src/main/java/models` → Clases (modelos) para mapeo de la ORM a las tablas de la base de datos.
