@@ -59,6 +59,12 @@ public class App {
             }
         });
 
+        // Filtro de seguridad que restringe el acceso solo al admin
+        // Las rutas protegidas revisan el atributo is_admin de la sesion
+        before("/teacher/create", (req, res) -> checkAdminAccess(req, res));
+        before("/teacher/new", (req, res) -> checkAdminAccess(req, res));
+        
+
         // --- Filtro 'after' para cerrar la conexión a la base de datos ---
         // Este filtro se ejecuta después de que cada solicitud HTTP ha sido procesada.
         after((req, res) -> {
@@ -122,7 +128,8 @@ public class App {
             // Intenta obtener el nombre de usuario y la bandera de login de la sesión.
             String currentUsername = req.session().attribute("currentUserUsername");
             Boolean loggedIn = req.session().attribute("loggedIn");
-
+            Boolean is_admin = (Boolean) req.session().attribute("is_admin"); 
+            
             // 1. Verificar si el usuario ha iniciado sesión.
             // Si no hay un nombre de usuario en la sesión, la bandera es nula o falsa,
             // significa que el usuario no está logueado o su sesión expiró.
@@ -135,14 +142,23 @@ public class App {
 
             // 2. Si el usuario está logueado, añade el nombre de usuario al modelo para la plantilla.
             model.put("username", currentUsername);
-
+            model.put("is_admin", is_admin != null && is_admin);
+            
             // 3. Renderiza la plantilla del dashboard con el nombre de usuario.
             return new ModelAndView(model, "dashboard.mustache");
         }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
+        // GET: Página de configuración
         get("/settings", (req, res) -> {
-            res.redirect("https://d2fnysaq0ytmgw.cloudfront.net/public/content/media/image/page-under-construction.jpg?VersionId=MK1bzfxBR4nMMRShIV8_4rIsbsdxRs68");
-            return null; // Importante retornar null después de una redirección.
-        });
+            Map<String, Object> model = new HashMap<>();
+            
+            // Verificar sesión (opcional, pero recomendado)
+            if (req.session().attribute("loggedIn") == null) {
+                res.redirect("/login");
+                return null;
+            }
+
+            return new ModelAndView(model, "settings.mustache");
+        }, new MustacheTemplateEngine());
         // GET: Ruta para cerrar la sesión del usuario.
         get("/logout", (req, res) -> {
             // Invalida completamente la sesión del usuario.
@@ -241,6 +257,7 @@ public class App {
 
                 ac.set("name", name); // Asigna el nombre de usuario.
                 ac.set("password", hashedPassword); // Asigna la contraseña hasheada.
+                ac.set("is_admin", 0);
                 ac.saveIt(); // Guarda el nuevo usuario en la tabla 'users'.
 
                 res.status(201); // Código de estado HTTP 201 (Created) para una creación exitosa.
@@ -387,16 +404,23 @@ public class App {
                 // Autenticación exitosa.
                 res.status(200); // OK.
 
+                Integer is_adminInt = ac.getInteger("is_admin");
+                Boolean is_adminUser = is_adminInt != null && is_adminInt == 1; 
+
                 // --- Gestión de Sesión ---
                 req.session(true).attribute("currentUserUsername", username); // Guarda el nombre de usuario en la sesión.
                 req.session().attribute("userId", ac.getId()); // Guarda el ID de la cuenta en la sesión (útil).
                 req.session().attribute("loggedIn", true); // Establece una bandera para indicar que el usuario está logueado.
+                req.session().attribute("is_admin", is_adminUser); 
 
+                System.out.println("DEBUG Login exitoso para " + username + " (Admin: " + is_adminUser + ")");
+                
                 System.out.println("DEBUG: Login exitoso para la cuenta: " + username);
                 System.out.println("DEBUG: ID de Sesión: " + req.session().id());
 
 
                 model.put("username", username); // Añade el nombre de usuario al modelo para el dashboard.
+                model.put("is_admin", is_adminUser);
                 // Renderiza la plantilla del dashboard tras un login exitoso.
                 return new ModelAndView(model, "dashboard.mustache");
             } else {
@@ -434,6 +458,7 @@ public class App {
                 // Se recomienda usar `BCrypt.hashpw(password, BCrypt.gensalt())` como en la ruta '/user/new').
                 newUser.set("name", name); // Asigna el nombre al campo 'name'.
                 newUser.set("password", password); // Asigna la contraseña al campo 'password'.
+                newUser.set("is_admin", 0);
                 newUser.saveIt(); // Guarda el nuevo usuario en la tabla 'users'.
 
                 res.status(201); // Created.
@@ -450,4 +475,26 @@ public class App {
         });
 
     } // Fin del método main
+
+    /**
+     * Filtro de verificación de acceso administrativo.
+     * Solo permite el acceso si el usuario tiene el flag 'is_admin' en true en la sesión.
+     */
+    private static void checkAdminAccess(spark.Request req, spark.Response res) {
+        Boolean is_admin = (Boolean) req.session().attribute("is_admin");
+        Boolean loggedIn = (Boolean) req.session().attribute("loggedIn");
+        String currentUsername = req.session().attribute("currentUserUsername");
+
+        if (currentUsername == null || loggedIn == null || !loggedIn) {
+            res.redirect("/?error=" + URLEncoder.encode("Acceso restringido. Debes iniciar sesión.", StandardCharsets.UTF_8));
+            halt(); 
+            return;
+        }
+
+        if (is_admin == null || !is_admin) {
+            System.out.println("DEBUG: Acceso a ruta de administrador denegado al usuario: " + currentUsername);
+            res.redirect("/dashboard?error=" + URLEncoder.encode("Acceso denegado. Solo el administrador puede registrar profesores.", StandardCharsets.UTF_8));
+            halt(); 
+        }
+    }
 } // Fin de la clase App
